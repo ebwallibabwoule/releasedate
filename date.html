@@ -10,6 +10,16 @@
             "wikipedia": "https://en.wikipedia.org/w/api.php",
             "proxy": "prox.php?limit=400000&url=http://en.wikipedia.org/wiki/"
         }
+
+
+        $("#knop").on('click', function() {
+            getWikiReleaseDates();
+        });
+
+        $("#knop2").on('click', function() {
+            getDiscogsReleaseDates();
+        });
+
         function getWikiReleaseDates() {
             $('a').each(function(index) {
                 var that = $(this),
@@ -49,7 +59,7 @@
                             $(that).removeClass("throbber");
 
                             if (releaseValue) {
-                                li.append('<a class="date" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
+                                li.append('<a class="date" target="_blank" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
                              
                             } else {
                                 li.append('<span class="no-release">no table header contains release</span>');
@@ -77,17 +87,13 @@
             })
         }
 
-        $("#knop").on('click', function() {
-            getWikiReleaseDates();
-        });
-        $("#knop2").on('click', function() {
+        function getDiscogsReleaseDates() {
 
             $('a').each(function(index) {
                 var that = $(this),
                     song = that.text(),
                     li = that.parent();
 
-                var callbackname = "?";
                 $.ajax({ 
                     url: urls.discogs, 
                     type: "GET", 
@@ -98,33 +104,12 @@
                     cache: false
                 })
                 .done(function(data) {
-                    var response = data.query.search[0];
+                    var response = data.data.results[0];
 
                     $(that).removeClass("throbber");
 
                     if (response) {
-                        var title = encodeURIComponent(response.title.replace(/\ /g, '_'));
-
-                        $.ajax({
-                            url: urls.proxy + title,
-                            cache: false
-                        })
-                        .done(function(html) {
-                            var releaseIdentifier = $("th:contains('Release')", html),
-                                releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
-                                releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
-
-                            $(that).removeClass("throbber");
-
-                            if (releaseValue) {
-                                li.append('<a class="date" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
-                             
-                            } else {
-                                li.append('<span class="no-release">no table header contains release</span>');
-                                $('.top').append('<div>' + li.html() + "</div>");
-                            }
-                            
-                        });
+                        li.append('<a class="date"  href="http://www.discogs.com' + response.uri + '">' + response.year + "</a>");
                     }
                     else {
                         li.append('<span class="no-page">no page found</span>');
@@ -141,9 +126,9 @@
 
                     return false
                 }            
-            });
+            });            
+        }
 
-        });
     });
 
     </script>
