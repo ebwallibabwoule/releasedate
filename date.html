@@ -5,15 +5,31 @@
     <script type="text/javascript">
 
     $(function() {
-        $("#knop").on('click', function() {
+
+        var urls = {
+            discogs: "http://api.discogs.com/database/search",
+            wikipedia: "https://en.wikipedia.org/w/api.php",
+            proxy: "prox.php?limit=400000&url=http://en.wikipedia.org/wiki/%search%"
+        }
+
+        function getWikiReleaseDates() {
             $('a').each(function(index) {
                 var that = $(this),
                     song = that.text(),
-                    li = that.parent(),
-                    jsonUrl = "https://en.wikipedia.org/w/api.php?callback=?&action=query&list=search&srsearch=" + song + "&srlimit=1&srprop=&format=json";
+                    li = that.parent();
 
-                $.getJSON(jsonUrl, function() {
-                    that.addClass("throbber");
+                $.ajax({
+                    url: urls.wikipedia,
+                    dataType: "jsonp",
+                    data: { 
+                        action: "query",
+                        list: "search",
+                        srlimit: "1",
+                        format: "json",
+                        //callback: "?",
+                        srsearch: song
+                    }, 
+                    cache: false
                 })
                 .done(function(data) {
                     var response = data.query.search[0];
@@ -22,27 +38,27 @@
 
                     if (response) {
                         var title = encodeURIComponent(response.title.replace(/\ /g, '_')),
-                            proxyUrl = 'prox.php?limit=400000&url=http://en.wikipedia.org/wiki/' + title;
+                            proxyUrl = urls.wikipedia.replace("%search%",title);
 
                         $.ajax({
                             url: proxyUrl,
-                            cache: false,
-                            success: function(html) {
-                                var releaseIdentifier = $("th:contains('Release')", html),
-                                    releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
-                                    releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
+                            cache: false
+                        })
+                        .done(function(html) {
+                            var releaseIdentifier = $("th:contains('Release')", html),
+                                releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
+                                releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
 
-                                $(that).removeClass("throbber");
+                            $(that).removeClass("throbber");
 
-                                if (releaseValue) {
-                                    li.append('<a class="date" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
-                                 
-                                } else {
-                                    li.append('<span class="no-release">no table header contains release</span>');
-
-                                    $('.top').append('<div>' + li.html() + "</div>");
-                                }
+                            if (releaseValue) {
+                                li.append('<a class="date" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
+                             
+                            } else {
+                                li.append('<span class="no-release">no table header contains release</span>');
+                                $('.top').append('<div>' + li.html() + "</div>");
                             }
+                            
                         });
                     }
                     else {
@@ -62,6 +78,34 @@
                     return false
                 }
             })
+        }
+
+        $("#knop").on('click', function() {
+            getWikiReleaseDates();
+        });
+        $("#knop2").on('click', function() {
+            function getDiscogsReleaseDates(){};
+            var callbackname = "?";
+            var jsonUrl = "http://api.discogs.com/database/search?q=Whiskey+in+the+jar+Metallica&callback=" + callbackname;
+            $.ajax({ 
+                url: urls.discogs, 
+                dataType: 'jsonp', 
+                data: { 
+                    q: 'Whiskey in the jar Metallica'
+                }, 
+            })
+            .done(function (data) { 
+                console.log(data.data.results[0].year, data); 
+            }); 
+                // $.getJSON(jsonUrl, function() {
+
+                // })
+                // .done(function(data) {
+                //     var response = data.results;
+                //     console.log(response);
+
+                // })
+
         });
     });
 
@@ -85,7 +129,7 @@
 <body>
 <div id="wiki"></div>
 <!--<input id="hond" type="text" value="nirvana teen"/>-->
-<button id="knop">ZOEK</button>
+<button id="knop">ZOEK</button><button id="knop2">ZOEK discogs</button>
 <div class="top">
 </div>
 <div>
