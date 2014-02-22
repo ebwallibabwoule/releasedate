@@ -1,0 +1,8 @@
+.throbber { background: url(http://images3.wikia.nocookie.net/__cb20120528054621/factionparadox/images/9/91/Upload_throbber.gif) no-repeat left top; }
+.top { display: table; padding: 20px; border: 1px solid red; float: right }
+.no-release,
+.no-page { color: red }
+
+ol { display: table; padding: 0; margin: 0;}
+li, .top div { display: table-row; }
+li a, li span, .top a, .top span { display: table-cell; padding-right: 10px; }

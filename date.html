@@ -13,83 +13,105 @@
 
 
         $("#knop").on('click', function() {
-            getWikiReleaseDates();
+            $('li>a:first-child').each(function(index) {
+                var that = $(this),
+                    song = that.text(),
+                    li = that.parent(),
+                    file = that.data("file"); 
+                    
+
+                    getTag(file, function(tag){
+                        song = tag.tag.title + " " + tag.tag.artist;
+                        getWikiReleaseDates(song, function(year){
+                            tag.tag.year = year[0];
+                            postTag(tag, file);
+                        })
+                    });
+
+
+
+                /* limiting calls */
+                if (index == 2) {
+                    $("#knop").off('click');
+
+                    return false
+                }
+            })
+
+
         });
 
         $("#knop2").on('click', function() {
             getDiscogsReleaseDates();
         });
 
-        function getWikiReleaseDates() {
-            $('a').each(function(index) {
-                var that = $(this),
-                    song = that.text(),
-                    li = that.parent();
+        $("#knop3").on('click', function() {
+            postTag();
+        });
 
-                $.ajax({
-                    url: urls.wikipedia,
-                    dataType: "jsonp",
-                    data: {
-                        srsearch: song,
-                        srlimit: 1,
-                        srprop: "",
-                        format: "json",
-                        action: "query",
-                        list: "search"
-                    },
-                    cache: false
-                })
-                .done(function(data) {
-                    var response = data.query.search[0];
+        $("#knop4").on('click', function() {
+            getTag();
+        });
 
-                    $(that).removeClass("throbber");
+        function getWikiReleaseDates(searchSingle, callback) {
+            $.ajax({
+                url: urls.wikipedia,
+                dataType: "jsonp",
+                data: {
+                    srsearch: searchSingle,
+                    srlimit: 1,
+                    srprop: "",
+                    format: "json",
+                    action: "query",
+                    list: "search"
+                },
+                cache: false
+            })
+            .done(function(data) {
+                var response = data.query.search[0];
 
-                    if (response) {
-                        var title = encodeURIComponent(response.title.replace(/\ /g, '_'));
+                //$(that).removeClass("throbber");
 
-                        $.ajax({
-                            url: urls.proxy + title,
-                            cache: false
-                        })
-                        .done(function(html) {
-                            var releaseIdentifier = $("th:contains('Release')", html),
-                                releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
-                                releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
+                if (response) {
+                    var title = encodeURIComponent(response.title.replace(/\ /g, '_'));
 
-                            $(that).removeClass("throbber");
+                    $.ajax({
+                        url: urls.proxy + title,
+                        cache: false
+                    })
+                    .done(function(html) {
+                       var releaseIdentifier = $("th:contains('Release')", html),
+                            releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
+                            releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
 
-                            if (releaseValue) {
-                                li.append('<a class="date" target="_blank" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
-                             
-                            } else {
-                                li.append('<span class="no-release">no table header contains release</span>');
-                                $('.top').append('<div>' + li.html() + "</div>");
-                            }
-                            
-                        });
-                    }
-                    else {
-                        li.append('<span class="no-page">no page found</span>');
-                        $('.top').append('<div>' + li.html() + "</div>");
-                    }
-                })
-                .fail(function(){
-                    li.append('<span class="no-page">wikipedia API fail</span>');
-                    $('.top').append('<div>' + li.html() + "</div>");
-                })
 
-                /* limiting calls */
-                if (index == 20) {
-                    $("#knop").off('click');
-
-                    return false
+                        callback(releaseYear);
+                  //      $(that).removeClass("throbber");
+ /*
+                        if (releaseValue) {
+                            li.append('<a class="date" target="_blank" href="http://en.wikipedia.org/wiki/' + title + '"">' + releaseYear + "</a>");
+                         
+                        } else {
+                            li.append('<span class="no-release">no table header contains release</span>');
+                            $('.top').append('<div>' + li.html() + "</div>");
+                        }
+                        */
+                    });
                 }
+                else {
+                    li.append('<span class="no-page">no page found</span>');
+                    $('.top').append('<div>' + li.html() + "</div>");
+                }
+            })
+            .fail(function(){
+                li.append('<span class="no-page">wikipedia API fail</span>');
+                $('.top').append('<div>' + li.html() + "</div>");
             })
         }
 
         function getDiscogsReleaseDates() {
 
-            $('a').each(function(index) {
+            $('li>a:first-child').each(function(index) {
                 var that = $(this),
                     song = that.text(),
                     li = that.parent();
@@ -99,19 +121,22 @@
                     type: "GET", 
                     dataType: 'jsonp', 
                     data: { 
-                        q: song
+                        q: song,
+                        format: "single"
                     }, 
                     cache: false
                 })
                 .done(function(data) {
-                    var response = data.data.results[0];
-
+                    var response;
                     $(that).removeClass("throbber");
-
-                    if (response) {
-                        li.append('<a class="date"  href="http://www.discogs.com' + response.uri + '">' + response.year + "</a>");
+                    for(var i=0;i<5;i++){
+                        response = data.data.results[i];
+                        if(data && data.data && data.data.results[i] && data.data.results[i].year) {
+                            li.append('<a class="date" target="_blank" href="http://www.discogs.com' + response.uri + '">' + response.year + "</a>");
+                            break;
+                        }
                     }
-                    else {
+                    if (!response) {
                         li.append('<span class="no-page">no page found</span>');
                         $('.top').append('<div>' + li.html() + "</div>");
                     }
@@ -121,12 +146,61 @@
                     $('.top').append('<div>' + li.html() + "</div>");
                 })
                 /* limiting calls */
-                if (index == 2) {
+                if (index == 25) {
                     $("#knop2").off('click');
 
                     return false
                 }            
             });            
+        }
+
+        function getTag(file, callback) {
+            $.ajax({ 
+                url: "demos/test.php", 
+                dataType: "json", 
+                data: { 
+                    Filename: file,
+                    format: "JSON"
+                }, 
+                cache: false
+            })
+            .done(function(tag) {
+                callback(tag);
+            })
+
+        }
+
+        function postTag(tag, file) {
+            //$('li>a:first-child').each(function(index) {
+            var that = $(this),
+                song = that.text(),
+                //file = "bla.mp3", //that.data("file"),
+                li = that.parent();
+
+                var options = { 
+                    Filename: file,
+                    TagFormatsToWrite: ["id3v1","id3v2.3"],
+                    WriteTags: "Save Changes",
+                    Title: tag.tag.title,
+                    Artist: tag.tag.artist,
+                    Year: tag.tag.year,
+                    GenreOther: tag.tag.genre
+                };
+
+//console.log(file,getTags(file));
+                $.ajax({ 
+                    url: "demos/test.php", 
+                    type: "POST", 
+                    data: options, 
+                    cache: false
+                })
+                .done(function(data) {
+                })
+                .fail(function(){
+                    console.log("postTag fails");
+                })
+
+            //});
         }
 
     });
@@ -140,8 +214,8 @@
     .top { display: table; padding: 20px; border: 1px solid red; float: right }
     .no-release,
     .no-page { color: red }
-    #knop { padding: 10px; cursor: pointer; margin: 0;}
-    #knop:hover { background-color: gray; color: white; }
+    #knop, #knop2 { padding: 10px; cursor: pointer; margin: 0;}
+    #knop:hover, #knop2:hover { background-color: gray; color: white; }
     ol { display: table; padding: 0; margin: 0;}
     li, .top div { display: table-row; }
     li a, li span, .top a, .top span { display: table-cell; padding-right: 10px; }
@@ -149,13 +223,23 @@
     </style>
   </head>
 <body>
-<div id="wiki"></div>
-<!--<input id="hond" type="text" value="nirvana teen"/>-->
-<button id="knop">ZOEK</button><button id="knop2">ZOEK discogs</button>
+<button id="knop">Zoek Wikipedia</button><button id="knop2">Zoek Discogs</button><button id="knop3">Post</button><button id="knop4">Get</button>
 <div class="top">
 </div>
 <div>
 <ol>
+<?php
+if ($handle = opendir('.')) {
+    while (false !== ($file = readdir($handle)))
+    {
+        if ($file != "." && $file != ".." && strtolower(substr($file, strrpos($file, '.') + 1)) == 'mp3')
+        {
+            $thelist .= '<li><a data-file="'.$file.'">'.$file.'</a></li>';
+        }
+    }
+    closedir($handle);
+}
+?>
 <!--
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Here Without You 3 Doors Down">Here Without You 3 Doors Down</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Kryptonite 3 Doors Down">Kryptonite 3 Doors Down</a></li>
@@ -404,10 +488,7 @@
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Night Boat to Cairo Madness">Night Boat to Cairo Madness</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=One Step Beyond Madness">One Step Beyond Madness</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Our House Madness">Our House Madness</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Dance With Somebody Mando Diao">Dance With Somebody Mando Diao</a></li>-->
-
-
-
+<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Dance With Somebody Mando Diao">Dance With Somebody Mando Diao</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=So Why So Sad Manic Street Preachers">So Why So Sad Manic Street Preachers</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Sex And Candy Marcy Playground">Sex And Candy Marcy Playground</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Lucky Strike Maroon 5">Lucky Strike Maroon 5</a></li>
@@ -449,17 +530,23 @@
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Gotta Be Somebody Nickelback">Gotta Be Somebody Nickelback</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=How You Remind Me Nickelback">How You Remind Me Nickelback</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=How You Remind Me Nickelback">How You Remind Me Nickelback</a></li>
+
+
+
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=If Today Was Your Last Day Nickelback">If Today Was Your Last Day Nickelback</a></li>
+<li><a  href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Wonderwall Oasis">Wonderwall Oasis</a></li>
+
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Rockstar Nickelback">Rockstar Nickelback</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Someday Nickelback">Someday Nickelback</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Smells Like Teen Spirit Nirvana">Smells Like Teen Spirit Nirvana</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Just A Girl No Doubt">Just A Girl No Doubt</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=L.I.F.E.G.O.E.S.O.N. Noah And The Wale">L.I.F.E.G.O.E.S.O.N. Noah And The Wale</a></li>
+<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Someday Nickelback">Someday Nickelback</a></li>-->
+<li><a data-file="bla.mp3" href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Just A Girl No Doubt">Just A Girl No Doubt</a></li>
+<li><a data-file="test.mp3" href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Smells Like Teen Spirit Nirvana">Smells Like Teen Spirit Nirvana</a></li>
+
+<!--<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=L.I.F.E.G.O.E.S.O.N. Noah And The Wale">L.I.F.E.G.O.E.S.O.N. Noah And The Wale</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Whatever Didi Wants NOFX">Whatever Didi Wants NOFX</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Le Vent Nous Portera Noir Desir">Le Vent Nous Portera Noir Desir</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Because Novastar">Because Novastar</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Wrong Novastar">Wrong Novastar</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Wonderwall Oasis">Wonderwall Oasis</a></li>
+<li><a data="test.mp3" href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Wonderwall Oasis">Wonderwall Oasis</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Up on the Downside Ocean Colour Scene">Up on the Downside Ocean Colour Scene</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Little Talks Of Monsters and Men">Little Talks Of Monsters and Men</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Just For Tonight One Night Only">Just For Tonight One Night Only</a></li>
@@ -648,7 +735,7 @@
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Making Plans For Nigel Xtc">Making Plans For Nigel Xtc</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=My Body Young the Giant">My Body Young the Giant</a></li>
 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Playmate Of The Year Zebrahead">Playmate Of The Year Zebrahead</a></li>
-<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Baila (Sexy Thing) Zucchero Sugar Fornaciari">Baila (Sexy Thing) Zucchero Sugar Fornaciari</a></li>
+<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Baila (Sexy Thing) Zucchero Sugar Fornaciari">Baila (Sexy Thing) Zucchero Sugar Fornaciari</a></li>-->
 </ol>
 </div>
 
