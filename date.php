@@ -12,20 +12,8 @@
         <button id="knop3">Post</button>
         <button id="knop4">Get</button>
         
-        <div>
+        <div class="files">
             <ol>
-                <?php
-                if ($handle = opendir('./audio')) {
-                    while (false !== ($file = readdir($handle)))
-                    {
-                        if ($file != "." && $file != ".." && strtolower(substr($file, strrpos($file, '.') + 1)) == 'mp3')
-                        {
-                            echo '<li><a href="#" data-file="../audio/'.$file.'">'.$file.'</a></li>';
-                        }
-                    }
-                    closedir($handle);
-                }
-                ?>
                 <!--
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Here Without You 3 Doors Down">Here Without You 3 Doors Down</a></li>
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Kryptonite 3 Doors Down">Kryptonite 3 Doors Down</a></li>
@@ -323,11 +311,10 @@
                 <li><a  href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Wonderwall Oasis">Wonderwall Oasis</a></li>
 
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Rockstar Nickelback">Rockstar Nickelback</a></li>
-                <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Someday Nickelback">Someday Nickelback</a></li>-->
+                <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Someday Nickelback">Someday Nickelback</a></li>
                 <li><a data-file="bla.mp3" href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Just A Girl No Doubt">Just A Girl No Doubt</a></li>
                 <li><a data-file="test.mp3" href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Smells Like Teen Spirit Nirvana">Smells Like Teen Spirit Nirvana</a></li>
-
-                <!--<li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=L.I.F.E.G.O.E.S.O.N. Noah And The Wale">L.I.F.E.G.O.E.S.O.N. Noah And The Wale</a></li>
+                <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=L.I.F.E.G.O.E.S.O.N. Noah And The Wale">L.I.F.E.G.O.E.S.O.N. Noah And The Wale</a></li>
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Whatever Didi Wants NOFX">Whatever Didi Wants NOFX</a></li>
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Le Vent Nous Portera Noir Desir">Le Vent Nous Portera Noir Desir</a></li>
                 <li><a href="http://en.wikipedia.org/w/index.php?title=Special%3ASearch&profile=default&fulltext=Search&search=Because Novastar">Because Novastar</a></li>
@@ -526,6 +513,7 @@
         </div>
         <script src="js/jquery-1.11.0.js"></script>
         <script src="js/lodash.min.js"></script>
+        <script src="js/handlebars-v1.3.0.js"></script>
         <script src="js/main.js"></script>
     </body>
 </html>

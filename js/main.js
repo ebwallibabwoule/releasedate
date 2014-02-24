@@ -9,94 +9,86 @@ var _debug = false;
 })(); 
 
 $(function() {
-    var _yearsArray = [];
     
-    String.prototype.replaceAll = function(str1, str2, ignore) {
-        console.debuglog(str1, str2);
-        return this.replace(new RegExp(str1.replace(/([\/\,\!\\\^\$\{\}\[\]\(\)\.\*\+\?\|\<\>\-\&])/g,"\\$&"),(ignore?"gi":"g")),(typeof(str2)=="string")?str2.replace(/\$/g,"$$$$"):str2);
-    };
+    var _yearsArray = [],
+        _filesObject = {"files":[]},
+        urls = {
+            "discogs" : "http://api.discogs.com/database/search",
+            "wikipedia": "https://en.wikipedia.org/w/api.php",
+            "proxy": "prox.php?limit=400000&url=http://en.wikipedia.org/wiki/",
+            "files": "files.php",
+            "audio": "../audio/"
+        };
 
-    function calculateBestYear(years) {
-        var minYear = Math.min.apply(null, years), 
-            maxYear = Math.max.apply(null, years);            
-        if(maxYear - minYear < 4) {
-            return minYear;
+    initialize = function() { 
+        getFiles();
+    }
+
+    initialize();
+    $("body").on("renderFilesObject", function(e){
+        renderFilesObject($("ol"));        
+    });
+    
+    $("body").on("updateFilesObject", function(e, file, year){
+        var fileIndex = _.findIndex(_filesObject.files, { 'name': file });//,
+
+        if(!_filesObject.files[fileIndex].tags.year) _filesObject.files[fileIndex].tags.year = [];
+        
+        if(year) _filesObject.files[fileIndex].tags.year.push(year);
+        
+        if($('.optimize').is(':checked')) optimizeYearsInFilesObject(file);
+
+        renderFilesObject($("ol")); 
+        //console.log("==========>",_filesObject);
+    });
+ 
+    function optimizeYearsInFilesObject(file) {
+        var fileIndex = _.findIndex(_filesObject.files, { 'name': file }),
+            yearTag = _filesObject.files[fileIndex].tags.year;
+        if(_filesObject.files[fileIndex].tags.year) {    
+            if(_filesObject.files[fileIndex].tags.year.length>1) {
+                var minYear = _.min(_filesObject.files[fileIndex].tags.year),
+                    maxYear = _.max(_filesObject.files[fileIndex].tags.year),
+                    diffYear = maxYear - minYear;
+
+                if(diffYear < 4) {
+                    _filesObject.files[fileIndex].tags.year = [];
+                    _filesObject.files[fileIndex].tags.year.push(minYear);
+                }
+            }
         }
     }
-
-    var urls = {
-        "discogs" : "http://api.discogs.com/database/search",
-        "wikipedia": "https://en.wikipedia.org/w/api.php",
-        "proxy": "prox.php?limit=400000&url=http://en.wikipedia.org/wiki/"
+   
+    function renderFilesObject(container) {
+        var list = '<% _.forEach(files, function(file) { %><li><%- file.name %><span><%- file.tags.year %> <%- file.tags.artist %></span></li><% }); %>';
+        container.html(_.template(list, _filesObject));
     }
 
-// _yearsArray["/m1d1e.mp3"] = [111,4343,4343];
-// _yearsArray.files[1] = [{"name":"/m22d22e.mp3","years": [222]}];
-// _yearsArray.files[2] = [{"name":"/m333e.mp3","years": [333]}];
-
-//     console.log(_yearsArray); 
-
-//     topp = {"files": [{ "name" : "/sswsw/swd.mp3", "years" : ["34343", 545,5454,545] },{ "name" : "/sswsw/sw.mp3", "years" : ["343d43", 545,5454,545] }]};
-//     var kaas = "";
-//     for (file in topp.files){
-//         for (year in topp.files[file].years){
-//            kaas = kaas + "," + topp.files[file].years[year];
-//         }
-//             console.log(topp.files[file].name, kaas);
-
-//     }
-
     $("#knop").on('click', function(event) {
-        $("body").on("updateYearsArray", function(e, file, year){
-            if(!_yearsArray[file]) _yearsArray[file] = []
-            _yearsArray[file].push(parseInt(year) * Math.random()*parseInt(year));
-
-            console.log(_yearsArray,_.min(_yearsArray[file]));
-
-            
-        });
-
-        $('li>a:first-child').each(function(index) {
-            var that = $(this),
-                //song = that.text(),
-                //li = that.parent(),
-                file = that.data("file"); 
-
+        index =0 ;
+        _.forEach(_filesObject.files, function(file) {
+            var file = file.name; 
+            index++;
 
             getTag(file, function(tag){
                 var song = tag.tag.title + " " + tag.tag.artist;
-                // getDiscogsReleaseDates(song, function(year){
-                //         //if(_yearsArray[file]) 
-                //             _yearsArray[file] = year;
 
-                //         $("body").trigger(jQuery.Event("updateYearsArray"));
-                // })
-
-                getWikiReleaseDates(song, function(year){
+                getWikiReleaseDate(song, function(year){
                     tag.tag.year = (year[0]) ? year[0] : '';
 
                     if (year[0]) {
-                        //li.append('<a class="date" target="_blank" href="http://en.wikipedia.org/wiki/'  + '"">' + year[0] + "</a>");
-                        
-
-                        
-
-                        $("body").trigger(jQuery.Event("updateYearsArray"), [file, year[0]]);
-                        $("body").trigger(jQuery.Event("updateYearsArray"), [file, year[0]]);
+                        $("body").trigger(jQuery.Event("updateFilesObject"), [file, year[0]]);
 
                         console.debuglog("OK - wikpedia found year for song " + song, year[0])
-                        //postTag(tag, file);     
+                        //postTag(file, tag);     
                     } else {
                         console.debuglog("NOK - no wikpedia year for song " + song)
-
-                        // li.append('<span class="no-release">no table header contains release</span>');
-                        // $('.top').append('<div>' + li.html() + "</div>");
                     }
                 })
             });
 
             /* limiting calls */
-            if (index == 5) {
+            if (index == 15) {
                 $("#knop").off('click');
 
                 return false
@@ -105,18 +97,29 @@ $(function() {
     });
 
     $("#knop2").on('click', function() {
-        getDiscogsReleaseDates();
+        _.forEach(_filesObject.files, function(file) {
+
+         //   getTag(file, function(tag){
+                var song = file.tags.title + " " + file.tags.artist;
+                getDiscogsReleaseDate(song, function(year){
+                    $("body").trigger(jQuery.Event("updateFilesObject"), [file.name, year]);
+                })
+           // });
+        });
     });
 
     $("#knop3").on('click', function() {
-        postTag();
+        _.forEach(_filesObject.files, function(file) {
+console.log(_filesObject, file, file.tags, file.name);
+            postTag(file.name,file.tags);
+        });
     });
 
-    $("#knop4").on('click', function() {
-        getTag();
-    });
+    // $("#knop4").on('click', function() {
+    //     getTag();
+    // });
 
-    function getWikiReleaseDates(searchSingle, callback) {
+    function getWikiReleaseDate(searchSingle, callback) {
         console.debuglog("Querying wikipedia for " + searchSingle);
 
         $.ajax({
@@ -150,12 +153,9 @@ $(function() {
                 .done(function(html) {
                     console.debuglog("OK - Got wikipedia page" + searchSingle, html.substring(0,20));
 
-
-
                     var releaseIdentifier = $("th:contains('Release')", html),
                         releaseValue = (releaseIdentifier) ? releaseIdentifier.next().html() : '',
                         releaseYear = (releaseValue) ? releaseValue.match(/\d{4}/) : '';
-
 
                     console.debuglog("OK - Got wikipedia year", releaseYear);
 
@@ -164,68 +164,44 @@ $(function() {
             }
             else {
                 console.debuglog("NOK! - No wikipedia query response" + searchSingle, title);
-
-                //li.append('<span class="no-page">no page found</span>');
-                //$('.top').append('<div>' + li.html() + "</div>");
             }
         })
         .fail(function(){
             console.debuglog("NOK! - Failed wikipedia query" + searchSingle);
-
-            // li.append('<span class="no-page">wikipedia API fail</span>');
-            // $('.top').append('<div>' + li.html() + "</div>");
         })
     }
 
-    function getDiscogsReleaseDates(searchSingle, callback) {
+    function getDiscogsReleaseDate(searchSingle, callback) {
+        var song = searchSingle;
 
-        //$('li>a:first-child').each(function(index) {
-            var song = searchSingle;//,
-               // li = that.parent();
+        $.ajax({ 
+            url: urls.discogs, 
+            //type: "GET", 
+            dataType: 'json', 
+            data: { 
+                q: song,
+                format: "single"
+            }, 
+            cache: false
+        })
+        .done(function(data) {
+            var response;
+            for(var i=0;i<5;i++){
+                response = data.data.results[i];
+                if(data && data.data && data.data.results[i] && data.data.results[i].year) {
+                    console.debuglog(response.year);
 
-            $.ajax({ 
-                url: urls.discogs, 
-                type: "GET", 
-                dataType: 'jsonp', 
-                data: { 
-                    q: song,
-                    format: "single"
-                }, 
-                cache: false
-            })
-            .done(function(data) {
-                var response;
-                //$(that).removeClass("throbber");
-                for(var i=0;i<5;i++){
-                    response = data.data.results[i];
-                    if(data && data.data && data.data.results[i] && data.data.results[i].year) {
-                        //li.append('<a class="date" target="_blank" href="http://www.discogs.com' + response.uri + '">' + response.year + "</a>");
-                        console.debuglog(response.year);
-                        _yearsArray.push(response.year);
-
-                        callback(response.year);
-                        break;
-                    }
+                    callback(response.year);
+                    break;
                 }
-                if (!response) {
-                        console.debuglog("NOK", data);
-
-                    // li.append('<span class="no-page">no page found</span>');
-                    // $('.top').append('<div>' + li.html() + "</div>");
-                }
-            })
-            .fail(function(){
-                 console.debuglog("NOK failed to get data");
-                // li.append('<span class="no-page">discogs API fail</span>');
-                // $('.top').append('<div>' + li.html() + "</div>");
-            })
-            /* limiting calls */
-            // if (index == 15) {
-            //     $("#knop2").off('click');
-
-            //     return false
-            // }            
-       // });            
+            }
+            if (!response) {
+                    console.debuglog("NOK", data);
+            }
+        })
+        .fail(function(){
+             console.debuglog("NOK failed to get data");
+        })
     }
 
     function getTag(file, callback) {
@@ -244,41 +220,81 @@ $(function() {
             console.debuglog("OK - got tags for " + file, tag);
 
             callback(tag);
-        })
-
+        }) 
     }
 
-    function postTag(tag, file) {
-        var that = $(this),
-            song = that.text(),
-            li = that.parent();
+    function postTag(file, tag) {
+        function fixPostTagValue(value){
+            return value; //JSON.stringify(value).substring(1, JSON.stringify(value).length - 1);
+        }
 
-        console.debuglog("About to write tags for " + file, tag);
 
-        var options = { 
-            Filename: file,
-            TagFormatsToWrite: ["id3v1","id3v2.3"],
-            WriteTags: "Save Changes",
-            Artist: JSON.stringify(tag.tag.artist).substring(1, JSON.stringify(tag.tag.artist).length - 1),
-            Title: JSON.stringify(tag.tag.title).substring(1, JSON.stringify(tag.tag.title).length - 1),
-            Year: tag.tag.year,
-            GenreOther: JSON.stringify(tag.tag.genre).substring(1, JSON.stringify(tag.tag.genre).length - 1)
-        };
+        console.log(file, tag, tag.artist, _filesObject);
+        if(tag) {
 
+
+            var that = $(this),
+                song = that.text(),
+                li = that.parent(),
+                artist = (tag.artist) ? (tag.artist) : '', 
+                title = (tag.title) ? (tag.title) : '',
+                year = (tag.year) ? tag.year.join() : '',
+                genre = (tag.genre) ? (tag.genre) : '';
+
+            console.debuglog("About to write tags for " + file, tag);
+
+            $.ajax({ 
+                url: "demos/test.php", 
+                type: "POST", 
+                data: { 
+                    Filename: file,
+                    TagFormatsToWrite: ["id3v1","id3v2.3"],
+                    WriteTags: "Save Changes",
+                    Artist: artist,
+                    Title: title,
+                    Year: year,
+                    GenreOther: genre 
+                }, 
+                cache: false
+            })
+            .done(function(data) {
+                console.debuglog("OK - tags written for " + file, tag);
+
+            })
+            .fail(function(){
+                console.debuglog("NOK! - write POST failed for " + file);
+            })
+        }
+    }
+
+   function getFiles(){
         $.ajax({ 
-            url: "demos/test.php", 
-            type: "POST", 
-            data: options, 
+            url: urls.files, 
+            type: "GET", 
+            dataType: 'json', 
+            data: { 
+                format: "json"
+            }, 
             cache: false
         })
-        .done(function(data) {
-            console.debuglog("OK - tags written for " + file, tag);
+        .done(function(data){
+            _.forEach(data,function(file){
+                _filesObject.files.push({"name": urls.audio + file, "tags": {}});
+                //$("body").trigger(jQuery.Event("updateFilesObject", file, '1000'));
+
+                getTag(urls.audio + file, function(tag){
+                    var fileIndex = _.findIndex(_filesObject.files, { 'name': urls.audio + file });//,
+
+                    console.log(_filesObject.files[fileIndex], tag.tag.artist,"<=============");
+                    if(!_filesObject.files[fileIndex].tags.artist) _filesObject.files[fileIndex].tags.artist = tag.tag.artist;
+                    if(!_filesObject.files[fileIndex].tags.title) _filesObject.files[fileIndex].tags.title = tag.tag.title;
+                    if(!_filesObject.files[fileIndex].tags.genre) _filesObject.files[fileIndex].tags.genre = tag.tag.genre;
+            $("body").trigger(jQuery.Event("renderFilesObject"));
+
+                });
+            });
 
         })
-        .fail(function(){
-            console.debuglog("NOK! - write POST failed for " + file);
-        })
-
     }
-
+                
 });
