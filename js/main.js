@@ -176,11 +176,10 @@ console.log(_filesObject, file, file.tags, file.name);
 
         $.ajax({ 
             url: urls.discogs, 
-            //type: "GET", 
-            dataType: 'json', 
+            type: "GET", 
+            dataType: 'jsonp', 
             data: { 
-                q: song,
-                format: "single"
+                q: song//,                format: "single"
             }, 
             cache: false
         })

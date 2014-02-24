@@ -145,25 +145,25 @@ if (!empty($Filename) && !empty($format)) {
 	}
 
 
-	$ArrayOfGenresTemp = getid3_id3v1::ArrayOfGenres();   // get the array of genres
-	foreach ($ArrayOfGenresTemp as $key => $value) {      // change keys to match displayed value
-		$ArrayOfGenres[$value] = $value;
-	}
-	unset($ArrayOfGenresTemp);                            // remove temporary array
-	unset($ArrayOfGenres['Cover']);                       // take off these special cases
-	unset($ArrayOfGenres['Remix']);
-	unset($ArrayOfGenres['Unknown']);
-	$ArrayOfGenres['']      = '- Unknown -';              // Add special cases back in with renamed key/value
-	$ArrayOfGenres['Cover'] = '-Cover-';
-	$ArrayOfGenres['Remix'] = '-Remix-';
-	asort($ArrayOfGenres);                                // sort into alphabetical order
+	// $ArrayOfGenresTemp = getid3_id3v1::ArrayOfGenres();   // get the array of genres
+	// foreach ($ArrayOfGenresTemp as $key => $value) {      // change keys to match displayed value
+	// 	$ArrayOfGenres[$value] = $value;
+	// }
+	// unset($ArrayOfGenresTemp);                            // remove temporary array
+	// unset($ArrayOfGenres['Cover']);                       // take off these special cases
+	// unset($ArrayOfGenres['Remix']);
+	// unset($ArrayOfGenres['Unknown']);
+	// $ArrayOfGenres['']      = '- Unknown -';              // Add special cases back in with renamed key/value
+	// $ArrayOfGenres['Cover'] = '-Cover-';
+	// $ArrayOfGenres['Remix'] = '-Remix-';
+	// asort($ArrayOfGenres);                                // sort into alphabetical order
 	$AllGenresArray = (!empty($OldThisFileInfo['comments']['genre']) ? $OldThisFileInfo['comments']['genre'] : array());
-	foreach ($ArrayOfGenres as $key => $value) {
-		if (in_array($key, $AllGenresArray)) {
-			unset($AllGenresArray[array_search($key, $AllGenresArray)]);
-			sort($AllGenresArray);
-		}
-	}
+	// foreach ($ArrayOfGenres as $key => $value) {
+	// 	if (in_array($key, $AllGenresArray)) {
+	// 		//unset($AllGenresArray[array_search($key, $AllGenresArray)]);
+	// 		//sort($AllGenresArray);
+	// 	}
+	// }
 
 	echo '{"tag": {"artist": "' .
 	 	 (!empty($OldThisFileInfo['comments']['artist']) ? implode(', ', $OldThisFileInfo['comments']['artist']) : '')
