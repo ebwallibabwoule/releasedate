@@ -195,7 +195,7 @@ $(function() {
                 //if(release[i].title == title) console.log("!!", release[i].title, release[i]['artist-credit']['name-credit'].artist);
                 if( release[i]['artist-credit']['name-credit'].artist && release[i]['artist-credit']['name-credit'].artist.name == artist) { 
                    // console.log(release[i].title, release[i]['artist-credit']['name-credit'].artist.name,  release[i].title, release[i].date , "<======");
-                    callback(release[i].date.match(/\d{4}/));
+                    callback((release[i].date) ? release[i].date.match(/\d{4}/) : '');
                     break;
                 }
                 else { 
@@ -295,7 +295,7 @@ $(function() {
                 getTag(urls.audio + file, function(tag){
                     var fileIndex = _.findIndex(_filesObject.files, { 'name': urls.audio + file });//,
 
-                    console.log(_filesObject.files[fileIndex], tag.tag.artist,"<=============");
+                    //console.log(_filesObject.files[fileIndex], tag.tag.artist,"<=============");
                     if(!_filesObject.files[fileIndex].tags.artist) _filesObject.files[fileIndex].tags.artist = tag.tag.artist;
                     if(!_filesObject.files[fileIndex].tags.title) _filesObject.files[fileIndex].tags.title = tag.tag.title;
                     if(!_filesObject.files[fileIndex].tags.genre) _filesObject.files[fileIndex].tags.genre = tag.tag.genre;
