@@ -25,23 +25,7 @@ $(function() {
     }
 
     initialize();
-    $("body").on("renderFilesObject", function(e){
-        renderFilesObject($("ol"));        
-    });
-    
-    $("body").on("updateFilesObject", function(e, file, year){
-        var fileIndex = _.findIndex(_filesObject.files, { 'name': file });//,
 
-        if(!_filesObject.files[fileIndex].tags.year) _filesObject.files[fileIndex].tags.year = [];
-        
-        if(year) _filesObject.files[fileIndex].tags.year.push(year);
-        
-        if($('.optimize').is(':checked')) optimizeYearsInFilesObject(file);
-
-        renderFilesObject($("ol")); 
-        //console.log("==========>",_filesObject);
-    });
- 
     function optimizeYearsInFilesObject(file) {
         var fileIndex = _.findIndex(_filesObject.files, { 'name': file }),
             yearTag = _filesObject.files[fileIndex].tags.year;
@@ -55,69 +39,18 @@ $(function() {
                     _filesObject.files[fileIndex].tags.year = [];
                     _filesObject.files[fileIndex].tags.year.push(minYear);
                 }
+
+                _filesObject.files[fileIndex].tags.year = _.uniq(_filesObject.files[fileIndex].tags.year);
+
             }
         }
     }
    
     function renderFilesObject(container) {
-        var list = '<% _.forEach(files, function(file) { %><li><%- file.name %><span><%- file.tags.year %> <%- file.tags.artist %></span></li><% }); %>';
+        var list = '<% _.forEach(files, function(file) { %><li><%- file.name %> - <span><%- file.tags.year %> - <%- file.tags.artist %> - <%- file.tags.title %> - <%- file.tags.genre %></span></li><% }); %>';
         container.html(_.template(list, _filesObject));
     }
 
-    $("#knop").on('click', function(event) {
-        index =0 ;
-        _.forEach(_filesObject.files, function(file) {
-            var file = file.name; 
-            index++;
-
-            getTag(file, function(tag){
-                var song = tag.tag.title + " " + tag.tag.artist;
-
-                getWikiReleaseDate(song, function(year){
-                    tag.tag.year = (year[0]) ? year[0] : '';
-
-                    if (year[0]) {
-                        $("body").trigger(jQuery.Event("updateFilesObject"), [file, year[0]]);
-
-                        console.debuglog("OK - wikpedia found year for song " + song, year[0])
-                        //postTag(file, tag);     
-                    } else {
-                        console.debuglog("NOK - no wikpedia year for song " + song)
-                    }
-                })
-            });
-
-            /* limiting calls */
-            if (index == 15) {
-                $("#knop").off('click');
-
-                return false
-            }
-        })
-    });
-
-    $("#knop2").on('click', function() {
-        _.forEach(_filesObject.files, function(file) {
-
-         //   getTag(file, function(tag){
-                var song = file.tags.title + " " + file.tags.artist;
-                getDiscogsReleaseDate(song, function(year){
-                    $("body").trigger(jQuery.Event("updateFilesObject"), [file.name, year]);
-                })
-           // });
-        });
-    });
-
-    $("#knop3").on('click', function() {
-        _.forEach(_filesObject.files, function(file) {
-console.log(_filesObject, file, file.tags, file.name);
-            postTag(file.name,file.tags);
-        });
-    });
-
-    // $("#knop4").on('click', function() {
-    //     getTag();
-    // });
 
     function getWikiReleaseDate(searchSingle, callback) {
         console.debuglog("Querying wikipedia for " + searchSingle);
@@ -179,7 +112,8 @@ console.log(_filesObject, file, file.tags, file.name);
             type: "GET", 
             dataType: 'jsonp', 
             data: { 
-                q: song//,                format: "single"
+                q: song/*,                
+                format: "single"*/
             }, 
             cache: false
         })
@@ -201,7 +135,84 @@ console.log(_filesObject, file, file.tags, file.name);
         .fail(function(){
              console.debuglog("NOK failed to get data");
         })
+    }    
+
+    function getRoviReleaseDate(searchSingle, callback) {
+        var song = encodeURIComponent(searchSingle.replace(/\ /g, '+')),
+            apiKey = "dfqnz9ymrde5h2rdpxnpaqku",
+            sig = "aEvCvQNAQS",
+            apiKey = apiKey.trim(),
+            secret = sig.trim(),
+            curdate = new Date(),
+            gmtstring = curdate.toGMTString(),
+            utc = Date.parse(gmtstring) / 1000,
+            md5hash = hex_md5(apiKey + secret + utc);
+
+        $.ajax({ 
+            url: "md5.php",
+            type: "GET",
+            cache: false,
+            data: {
+                "auth": md5hash,
+                "search": song
+            }
+        })
+        .done(function(data) {
+            for(var i=0;i<5;i++){
+                response = data.searchResponse.results[i];
+                if(response) {
+                    console.debuglog(response.year);
+                    releaseYear = (data.searchResponse.results[0].album.originalReleaseDate) ? data.searchResponse.results[0].album.originalReleaseDate.match(/\d{4}/) : '';
+                    callback(releaseYear);
+                    //callback(response.year);
+                    break;
+                }
+            }
+        })
+        .fail(function(){
+             console.debuglog("NOK failed to get data");
+        })
+
     }
+
+
+    function getMusicBrainzReleaseDate(artist, title, callback) {
+        var searchSingle = artist + " " + title;        
+        var song = encodeURIComponent(searchSingle.replace(/\ /g, '_'));
+
+        $.ajax({ 
+            url: "musicbrainz.php",
+            type: "GET",
+            cache: false,
+            data: {
+                "search": song
+            }
+        })
+        .done(function(data) {
+            var release = data['release-list'].release;
+            for(var i=0;i<release.length;i++){
+
+                //if(release[i].title == title) console.log("!!", release[i].title, release[i]['artist-credit']['name-credit'].artist);
+                if( release[i]['artist-credit']['name-credit'].artist && release[i]['artist-credit']['name-credit'].artist.name == artist) { 
+                   // console.log(release[i].title, release[i]['artist-credit']['name-credit'].artist.name,  release[i].title, release[i].date , "<======");
+                    callback(release[i].date.match(/\d{4}/));
+                    break;
+                }
+                else { 
+                    // for(var x=0;x<release[i]['artist-credit']['name-credit'].artist.length;x++){
+                    //     console.log(release[i].title, release[i]['artist-credit']['name-credit'].artist[x].name, " ?? "); 
+                    // }
+                }
+
+            }
+
+        })
+        .fail(function(){
+             console.debuglog("NOK failed to get data");
+        })
+
+    }
+
 
     function getTag(file, callback) {
         console.debuglog("Getting tags for ", file);
@@ -228,7 +239,7 @@ console.log(_filesObject, file, file.tags, file.name);
         }
 
 
-        console.log(file, tag, tag.artist, _filesObject);
+       // console.log(file, tag, tag.artist, _filesObject);
         if(tag) {
 
 
@@ -288,7 +299,7 @@ console.log(_filesObject, file, file.tags, file.name);
                     if(!_filesObject.files[fileIndex].tags.artist) _filesObject.files[fileIndex].tags.artist = tag.tag.artist;
                     if(!_filesObject.files[fileIndex].tags.title) _filesObject.files[fileIndex].tags.title = tag.tag.title;
                     if(!_filesObject.files[fileIndex].tags.genre) _filesObject.files[fileIndex].tags.genre = tag.tag.genre;
-            $("body").trigger(jQuery.Event("renderFilesObject"));
+                    $("body").trigger(jQuery.Event("renderFilesObject"));
 
                 });
             });
@@ -296,4 +307,82 @@ console.log(_filesObject, file, file.tags, file.name);
         })
     }
                 
+
+    /* EVENTS */
+    $("#knop").on('click', function(event) {
+        _.forEach(_filesObject.files, function(file) {
+            var file = file.name; 
+            getTag(file, function(tag){
+                var song = tag.tag.title + " " + tag.tag.artist;
+
+                getWikiReleaseDate(song, function(year){
+                    tag.tag.year = (year[0]) ? year[0] : '';
+
+                    if (year[0]) {
+                        $("body").trigger(jQuery.Event("updateFilesObject"), [file, year[0]]);
+
+                        console.debuglog("OK - wikpedia found year for song " + song, year[0])
+                        //postTag(file, tag);     
+                    } else {
+                        console.debuglog("NOK - no wikpedia year for song " + song)
+                    }
+                })
+            });
+        })
+    });
+
+    $("#knop2").on('click', function() {
+        _.forEach(_filesObject.files, function(file) {
+
+         //   getTag(file, function(tag){
+                var song = file.tags.title + " " + file.tags.artist;
+                getDiscogsReleaseDate(song, function(year){
+                    $("body").trigger(jQuery.Event("updateFilesObject"), [file.name, year]);
+                })
+           // });
+        });
+    });
+
+    $("#knop3").on('click', function() {
+        _.forEach(_filesObject.files, function(file) {
+            postTag(file.name,file.tags);
+        });
+    });
+
+     $("#knop4").on('click', function() {
+         _.forEach(_filesObject.files, function(file) {
+            var song = file.tags.title + " " + file.tags.artist;
+            getRoviReleaseDate(song,function(year){
+                $("body").trigger(jQuery.Event("updateFilesObject"), [file.name, year]);
+            });
+        });
+    });
+
+     $("#knop5").on('click', function() {
+         _.forEach(_filesObject.files, function(file) {
+            
+            getMusicBrainzReleaseDate(file.tags.artist, file.tags.title, function(year){
+                $("body").trigger(jQuery.Event("updateFilesObject"), [file.name, year]);
+            });
+        });
+    });
+
+
+    $("body").on("renderFilesObject", function(e){
+        renderFilesObject($("ol"));        
+    });
+    
+    $("body").on("updateFilesObject", function(e, file, year){
+        var fileIndex = _.findIndex(_filesObject.files, { 'name': file });//,
+
+        if(!_filesObject.files[fileIndex].tags.year) _filesObject.files[fileIndex].tags.year = [];
+        
+        if(year) _filesObject.files[fileIndex].tags.year.push(year);
+        
+        if($('.optimize').is(':checked')) optimizeYearsInFilesObject(file);
+
+        renderFilesObject($("ol")); 
+        //console.log("==========>",_filesObject);
+    });
+ 
 });
